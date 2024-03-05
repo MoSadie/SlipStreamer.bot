@@ -43,14 +43,14 @@ namespace SlipStreamer.bot
             // Plugin startup logic
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
 
-            Svc.Get<Events>().AddListener<ShipLoadedEvent>(ShipLoadedEvent);
-            Svc.Get<Events>().AddListener<OrderGivenEvent>(OrderGivenEvent);
-            Svc.Get<Events>().AddListener<BattleStartEvent>(BattleStartEvent);
-            Svc.Get<Events>().AddListener<BattleEndEvent>(BattleEndEvent);
-            Svc.Get<Events>().AddListener<CampaignStartEvent>(CampaignStartEvent);
-            Svc.Get<Events>().AddListener<CampaignEndEvent>(CampaignEndEvent);
-            Svc.Get<Events>().AddListener<CampaignSectorChangeEvent>(CampaignSectorChangeEvent);
-            Svc.Get<Events>().AddListener<SectorNodeChangedEvent>(SectorNodeChangedEvent);
+            Svc.Get<Events>().AddListener<ShipLoadedEvent>(ShipLoadedEvent, 1);
+            Svc.Get<Events>().AddListener<OrderGivenEvent>(OrderGivenEvent, 1);
+            Svc.Get<Events>().AddListener<BattleStartEvent>(BattleStartEvent, 1);
+            Svc.Get<Events>().AddListener<BattleEndEvent>(BattleEndEvent, 1);
+            Svc.Get<Events>().AddListener<CampaignStartEvent>(CampaignStartEvent, 1);
+            Svc.Get<Events>().AddListener<CampaignEndEvent>(CampaignEndEvent, 1);
+            Svc.Get<Events>().AddListener<CampaignSectorChangeEvent>(CampaignSectorChangeEvent, 1);
+            Svc.Get<Events>().AddListener<SectorNodeChangedEvent>(SectorNodeChangedEvent, 1);
 
 
             Application.quitting += ApplicationQuitting;
@@ -61,25 +61,27 @@ namespace SlipStreamer.bot
 
         private enum EventType
         {
-            GameLaunch, // Wrong time, emits at ship join finish
+            GameLaunch,
             GameExit,
             JoinShip,
             StartFight,
             EndFight,
             NodeChange,
-            OrderSent,
-            Accolade,
+            ChoiceAvailable,
+            OrderSent, // not working
+            Accolade, // not working
             KnockedOut,
             RunStarted,
             RunFailed,
             RunSucceeded,
-            NextSector
+            NextSector,
+            ShopEntered
         }
 
         private bool blockEvent()
         {
             try {
-            return captaincyRequired.Value && (CaptainManager.Main == null || !CaptainManager.Main.IsLocalPlayerCaptain);
+                return captaincyRequired.Value && (CaptainManager.Main == null || !CaptainManager.Main.IsLocalPlayerCaptain);
             } catch (Exception e)
             {
                 Log.LogError($"Error checking captaincy: {e.Message}");
@@ -164,6 +166,10 @@ namespace SlipStreamer.bot
                         { "message", e.Order.Message }
                     });
                     break;
+
+                default:
+                    Log.LogError($"Unknown order type: {e.Order.Type}");
+                    break;
             }
         }
 
@@ -177,13 +183,21 @@ namespace SlipStreamer.bot
             if (blockEvent())
                 return;
 
-            if (e.Scenario == null || e.Scenario.Encounter == null)
+            if (e.Scenario == null || e.Scenario.Battle == null)
+            {
+                Log.LogError("BattleStartEvent: Scenario or Battle is null");
                 return;
+            }
+
 
             sendEvent(EventType.StartFight, new Dictionary<string, string>
             {
-                { "enemy", e.Scenario.Encounter.Name },
-                { "details", e.Scenario.Encounter.Details.Full.Description }
+                { "enemy", e.Scenario.Battle.Metadata.EnemyName },
+                { "invaders", e.Scenario.Battle.Metadata.InvaderDescription },
+                { "intel", e.Scenario.Battle.Metadata.IntelDescription },
+                { "threatLevel", e.Scenario.Battle.Metadata.ThreatLevel.ToString() },
+                { "speedLevel", e.Scenario.Battle.Metadata.SpeedLevel.ToString() },
+                { "cargoLevel", e.Scenario.Battle.Metadata.CargoLevel.ToString() }
             });
         }
 
@@ -205,7 +219,8 @@ namespace SlipStreamer.bot
 
             sendEvent(EventType.RunStarted, new Dictionary<string, string>
             {
-                { "campaign", e.Campaign.CampaignId.ToString() }
+                { "campaign", e.Campaign.CampaignId.ToString() },
+                { "region", e.Campaign.CaptainCampaign.RegionVo.Metadata.Name }
             });
         }
 
@@ -213,14 +228,14 @@ namespace SlipStreamer.bot
         {
             if (blockEvent())
                 return;
-
+            
             if (e.Victory)
             {
-                sendEvent(EventType.RunFailed, []);
+                sendEvent(EventType.RunSucceeded, []);
             }
             else
             {
-                sendEvent(EventType.RunSucceeded, []);
+                sendEvent(EventType.RunFailed, []);
             }
         }
 
@@ -243,6 +258,47 @@ namespace SlipStreamer.bot
 
             if (!e.CampaignVo.CurrentNodeVo.HasValue) 
                 return;
+
+            ScenarioWrapperVo scenario = Svc.Get<ScenarioCatalog>().GetScenarioVo(e.CampaignVo.CurrentNodeVo.Value.ScenarioKey);
+
+            if (scenario == null)
+            {
+                Log.LogError($"Scenario not found: {e.CampaignVo.CurrentNodeVo.Value.ScenarioKey}");
+                return;
+            } else if (scenario.Encounter != null)
+            {
+                sendEvent(EventType.ChoiceAvailable, new Dictionary<string, string>
+                {
+                    { "isBacktrack", e.IsBacktrack.ToString() },
+                    { "scenarioKey",  e.CampaignVo.CurrentNodeVo.Value.ScenarioKey},
+                    { "visited", e.CampaignVo.CurrentNodeVo.Value.Visited.ToString() },
+                    { "completed", e.CampaignVo.CurrentNodeVo.Value.Completed.ToString() },
+                    { "captainVictory", e.CampaignVo.CurrentNodeVo.Value.CaptainVictory.ToString() },
+                    { "scenarioName", scenario.Encounter.Name },
+                    { "scenarioDescription", scenario.Encounter.Details.Full.Description },
+                    { "proposition", scenario.Encounter.Proposition },
+                    { "choice1", scenario.Encounter.Option1.Action },
+                    { "choice2", scenario.Encounter.Option2.Action }
+                });
+            } else if (scenario.Outpost != null)
+            {
+                Dictionary<string, string> data = new Dictionary<string, string>(){
+                    { "isBacktrack", e.IsBacktrack.ToString() },
+                    { "scenarioKey",  e.CampaignVo.CurrentNodeVo.Value.ScenarioKey},
+                    { "visited", e.CampaignVo.CurrentNodeVo.Value.Visited.ToString() },
+                    { "name", scenario.Outpost.Name },
+                    { "description", scenario.Outpost.Details.Full.Description },
+                    { "inventorySize", scenario.Outpost.Inventory.Length.ToString() }
+                };
+
+                for (int i = 0; i < scenario.Outpost.Inventory.Length; i++)
+                {
+                    data.Add($"inventory{i}_type", scenario.Outpost.Inventory[i].Type.ToString());
+                    data.Add($"inventory{i}_price", scenario.Outpost.Inventory[i].PricePerUnit.ToString());
+                    data.Add($"inventory{i}_subtype", scenario.Outpost.Inventory[i].SubType.ToString());
+                }
+                sendEvent(EventType.ShopEntered, data);
+            }
 
             sendEvent(EventType.NodeChange, new Dictionary<string, string>
             {
