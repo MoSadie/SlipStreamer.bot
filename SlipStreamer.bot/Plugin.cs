@@ -21,7 +21,7 @@ namespace SlipStreamer.bot
         private static ConfigEntry<string> streamerBotActionId;
         private static ConfigEntry<string> streamerBotActionName;
 
-        private static ConfigEntry<bool> captaincyRequired;
+        //private static ConfigEntry<bool> captaincyRequired;
 
         private static HttpClient httpClient = new HttpClient();
 
@@ -36,7 +36,7 @@ namespace SlipStreamer.bot
             streamerBotActionId = Config.Bind("StreamerBot", "ActionId", "", "Action ID to execute on game events.");
             streamerBotActionName = Config.Bind("StreamerBot", "ActionName", "", "Action name to execute on game events.");
 
-            captaincyRequired = Config.Bind("Captaincy", "CaptaincyRequired", true, "Configure if you must be the captain of the ship to trigger Streamer.bot actions.");
+            //captaincyRequired = Config.Bind("Captaincy", "CaptaincyRequired", true, "Configure if you must be the captain of the ship to trigger Streamer.bot actions.");
 
             //Harmony.CreateAndPatchAll(typeof(Plugin));
 
@@ -68,8 +68,8 @@ namespace SlipStreamer.bot
             EndFight,
             NodeChange,
             ChoiceAvailable,
-            OrderSent, // not working
-            Accolade, // not working
+            //OrderSent, // not working
+            //Accolade, // not working
             KnockedOut,
             RunStarted,
             RunFailed,
@@ -80,13 +80,16 @@ namespace SlipStreamer.bot
 
         private bool blockEvent()
         {
-            try {
-                return captaincyRequired.Value && (CaptainManager.Main == null || !CaptainManager.Main.IsLocalPlayerCaptain);
-            } catch (Exception e)
-            {
-                Log.LogError($"Error checking captaincy: {e.Message}");
-                return false;
-            }
+            return false;
+
+            //This doesn't work right now.
+            //try {
+            //    return captaincyRequired.Value && (CaptainManager.Main == null || !CaptainManager.Main.IsLocalPlayerCaptain);
+            //} catch (Exception e)
+            //{
+            //    Log.LogError($"Error checking captaincy: {e.Message}");
+            //    return false;
+            //}
         }
 
         private static void sendEvent(EventType eventType, Dictionary<string, string> data)
@@ -141,12 +144,14 @@ namespace SlipStreamer.bot
 
             switch (e.Order.Type)
             {
-                case OrderType.ACCOLADE:
-                    sendEvent(EventType.Accolade, new Dictionary<string, string>
-                    {
-                        { "message", e.Order.Message }
-                    });
-                    break;
+                // This event is only for reciving orders, not sending them.
+
+                //case OrderType.ACCOLADE:
+                //    sendEvent(EventType.Accolade, new Dictionary<string, string>
+                //    {
+                //        { "message", e.Order.Message }
+                //    });
+                //    break;
 
                 case OrderType.KNOCKED_OUT:
                     sendEvent(EventType.KnockedOut, new Dictionary<string, string>
@@ -155,21 +160,21 @@ namespace SlipStreamer.bot
                     });
                     break;
 
-                case OrderType.GENERAL:
-                case OrderType.SYSTEM_CRITICAL:
-                case OrderType.CREW_TO_MEDBAYS:
-                case OrderType.CREW_TO_WEAPONS:
-                case OrderType.INVADER_ALERT:
-                    sendEvent(EventType.OrderSent, new Dictionary<string, string>
-                    {
-                        { "orderType", e.Order.Type.ToString() },
-                        { "message", e.Order.Message }
-                    });
-                    break;
+                //case OrderType.GENERAL:
+                //case OrderType.SYSTEM_CRITICAL:
+                //case OrderType.CREW_TO_MEDBAYS:
+                //case OrderType.CREW_TO_WEAPONS:
+                //case OrderType.INVADER_ALERT:
+                //    sendEvent(EventType.OrderSent, new Dictionary<string, string>
+                //    {
+                //        { "orderType", e.Order.Type.ToString() },
+                //        { "message", e.Order.Message }
+                //    });
+                //    break;
 
-                default:
-                    Log.LogError($"Unknown order type: {e.Order.Type}");
-                    break;
+                //default:
+                //    Log.LogError($"Unknown order type: {e.Order.Type}");
+                //    break;
             }
         }
 
