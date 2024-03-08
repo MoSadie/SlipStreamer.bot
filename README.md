@@ -8,6 +8,10 @@ Trigger a Streamer.bot action on in-game events!
 - [BepInEx](https://docs.bepinex.dev/articles/user_guide/installation/index.html)
 - [Streamer.bot](https://streamer.bot)
 
+## (Quick) Setup Video
+
+https://youtu.be/4j6o4LhsG6E
+
 ## Game Installation
 
 1) Launch Slipstream at least once.
