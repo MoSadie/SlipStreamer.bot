@@ -131,50 +131,64 @@ namespace SlipStreamer.bot
 
         private void ShipLoadedEvent(ShipLoadedEvent e)
         {
-            if (blockEvent())
-                return;
+            try
+            {
+                if (blockEvent())
+                    return;
 
-            sendEvent(EventType.JoinShip, []);
+                sendEvent(EventType.JoinShip, []);
+            }
+            catch (Exception ex)
+            {
+                Log.LogError($"Error sending ShipLoadedEvent: {ex.Message}");
+            }
         }
 
         private void OrderGivenEvent(OrderGivenEvent e)
         {
-            if (blockEvent())
-                return;
-
-            switch (e.Order.Type)
+            try
             {
-                // This event is only for reciving orders, not sending them.
+                if (blockEvent())
+                    return;
 
-                //case OrderType.ACCOLADE:
-                //    sendEvent(EventType.Accolade, new Dictionary<string, string>
-                //    {
-                //        { "message", e.Order.Message }
-                //    });
-                //    break;
+                switch (e.Order.Type)
+                {
+                    // This event is only for reciving orders, not sending them.
 
-                case OrderType.KNOCKED_OUT:
-                    sendEvent(EventType.KnockedOut, new Dictionary<string, string>
+                    //case OrderType.ACCOLADE:
+                    //    sendEvent(EventType.Accolade, new Dictionary<string, string>
+                    //    {
+                    //        { "message", e.Order.Message }
+                    //    });
+                    //    break;
+
+                    case OrderType.KNOCKED_OUT:
+                        sendEvent(EventType.KnockedOut, new Dictionary<string, string>
                     {
                         { "message", e.Order.Message }
                     });
-                    break;
+                        break;
 
-                //case OrderType.GENERAL:
-                //case OrderType.SYSTEM_CRITICAL:
-                //case OrderType.CREW_TO_MEDBAYS:
-                //case OrderType.CREW_TO_WEAPONS:
-                //case OrderType.INVADER_ALERT:
-                //    sendEvent(EventType.OrderSent, new Dictionary<string, string>
-                //    {
-                //        { "orderType", e.Order.Type.ToString() },
-                //        { "message", e.Order.Message }
-                //    });
-                //    break;
+                        //case OrderType.GENERAL:
+                        //case OrderType.SYSTEM_CRITICAL:
+                        //case OrderType.CREW_TO_MEDBAYS:
+                        //case OrderType.CREW_TO_WEAPONS:
+                        //case OrderType.INVADER_ALERT:
+                        //    sendEvent(EventType.OrderSent, new Dictionary<string, string>
+                        //    {
+                        //        { "orderType", e.Order.Type.ToString() },
+                        //        { "message", e.Order.Message }
+                        //    });
+                        //    break;
 
-                //default:
-                //    Log.LogError($"Unknown order type: {e.Order.Type}");
-                //    break;
+                        //default:
+                        //    Log.LogError($"Unknown order type: {e.Order.Type}");
+                        //    break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.LogError($"Error sending OrderGivenEvent: {ex.Message}");
             }
         }
 
@@ -185,134 +199,176 @@ namespace SlipStreamer.bot
 
         private void BattleStartEvent(BattleStartEvent e)
         {
-            if (blockEvent())
-                return;
-
-            if (e.Scenario == null || e.Scenario.Battle == null)
+            try
             {
-                Log.LogError("BattleStartEvent: Scenario or Battle is null");
-                return;
+                if (blockEvent())
+                    return;
+
+                if (e.Scenario == null || e.Scenario.Battle == null)
+                {
+                    Log.LogError("BattleStartEvent: Scenario or Battle is null");
+                    return;
+                }
+
+
+                sendEvent(EventType.StartFight, new Dictionary<string, string>
+                {
+                    { "enemy", e.Scenario.Battle.Metadata.EnemyName },
+                    { "invaders", e.Scenario.Battle.Metadata.InvaderDescription },
+                    { "intel", e.Scenario.Battle.Metadata.IntelDescription },
+                    { "threatLevel", e.Scenario.Battle.Metadata.ThreatLevel.ToString() },
+                    { "speedLevel", e.Scenario.Battle.Metadata.SpeedLevel.ToString() },
+                    { "cargoLevel", e.Scenario.Battle.Metadata.CargoLevel.ToString() }
+                });
             }
-
-
-            sendEvent(EventType.StartFight, new Dictionary<string, string>
+            catch (Exception ex)
             {
-                { "enemy", e.Scenario.Battle.Metadata.EnemyName },
-                { "invaders", e.Scenario.Battle.Metadata.InvaderDescription },
-                { "intel", e.Scenario.Battle.Metadata.IntelDescription },
-                { "threatLevel", e.Scenario.Battle.Metadata.ThreatLevel.ToString() },
-                { "speedLevel", e.Scenario.Battle.Metadata.SpeedLevel.ToString() },
-                { "cargoLevel", e.Scenario.Battle.Metadata.CargoLevel.ToString() }
-            });
+                Log.LogError($"Error sending BattleStartEvent: {ex.Message}");
+            }
         }
 
         private void BattleEndEvent(BattleEndEvent e)
         {
-            if (blockEvent())
-                return;
-
-            sendEvent(EventType.EndFight, new Dictionary<string, string>
+            try
             {
-                { "outcome", e.Outcome.ToString() }
-            });
+                if (blockEvent())
+                    return;
+
+                sendEvent(EventType.EndFight, new Dictionary<string, string>
+                {
+                    { "outcome", e.Outcome.ToString() }
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.LogError($"Error sending BattleEndEvent: {ex.Message}");
+            }
         }
 
         private void CampaignStartEvent(CampaignStartEvent e)
         {
-            if (blockEvent())
-                return;
-
-            sendEvent(EventType.RunStarted, new Dictionary<string, string>
+            try
             {
-                { "campaign", e.Campaign.CampaignId.ToString() },
-                { "region", e.Campaign.CaptainCampaign.RegionVo.Metadata.Name }
-            });
+                if (blockEvent())
+                    return;
+
+                sendEvent(EventType.RunStarted, new Dictionary<string, string>
+                {
+                    { "campaign", e.Campaign.CampaignId.ToString() },
+                    { "region", e.Campaign.CaptainCampaign.RegionVo.Metadata.Name }
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.LogError($"Error sending CampaignStartEvent: {ex.Message}");
+            }
         }
 
         private void CampaignEndEvent(CampaignEndEvent e)
         {
-            if (blockEvent())
-                return;
-            
-            if (e.Victory)
+            try
             {
-                sendEvent(EventType.RunSucceeded, []);
-            }
-            else
+                if (blockEvent())
+                    return;
+
+                if (e.Victory)
+                {
+                    sendEvent(EventType.RunSucceeded, []);
+                }
+                else
+                {
+                    sendEvent(EventType.RunFailed, []);
+                }
+            } catch (Exception ex)
             {
-                sendEvent(EventType.RunFailed, []);
+                Log.LogError($"Error sending CampaignEndEvent: {ex.Message}");
             }
         }
 
         private void CampaignSectorChangeEvent(CampaignSectorChangeEvent e)
         {
-            if (blockEvent())
-                return;
-
-            sendEvent(EventType.NextSector, new Dictionary<string, string>
+            try
             {
-                { "sectorIndex", e.Campaign.CurrentSectorIndex.ToString() },
-                { "sectorName", e.Campaign.CurrentSectorVo.Definition.Name }
-            });
+                if (blockEvent())
+                    return;
+
+                sendEvent(EventType.NextSector, new Dictionary<string, string>
+                {
+                    { "sectorIndex", e.Campaign.CurrentSectorIndex.ToString() },
+                    { "sectorName", e.Campaign.CurrentSectorVo.Definition.Name }
+                });
+            } catch (Exception ex)
+            {
+                Log.LogError($"Error sending CampaignSectorChangeEvent: {ex.Message}");
+            }
         }
 
         private void SectorNodeChangedEvent(SectorNodeChangedEvent e)
         {
-            if (blockEvent())
-                return;
-
-            if (!e.CampaignVo.CurrentNodeVo.HasValue) 
-                return;
-
-            ScenarioWrapperVo scenario = Svc.Get<ScenarioCatalog>().GetScenarioVo(e.CampaignVo.CurrentNodeVo.Value.ScenarioKey);
-
-            if (scenario == null)
+            try
             {
-                Log.LogError($"Scenario not found: {e.CampaignVo.CurrentNodeVo.Value.ScenarioKey}");
-                return;
-            } else if (scenario.Encounter != null)
-            {
-                sendEvent(EventType.ChoiceAvailable, new Dictionary<string, string>
+                if (blockEvent())
+                    return;
+
+                if (!e.CampaignVo.CurrentNodeVo.HasValue)
+                    return;
+
+                ScenarioWrapperVo scenario = Svc.Get<ScenarioCatalog>().GetScenarioVo(e.CampaignVo.CurrentNodeVo.Value.ScenarioKey);
+
+                if (scenario == null)
+                {
+                    Log.LogError($"Scenario not found: {e.CampaignVo.CurrentNodeVo.Value.ScenarioKey}");
+                    return;
+                }
+                else if (scenario.Encounter != null)
+                {
+                    sendEvent(EventType.ChoiceAvailable, new Dictionary<string, string>
+                    {
+                        { "isBacktrack", e.IsBacktrack.ToString() },
+                        { "scenarioKey",  e.CampaignVo.CurrentNodeVo.Value.ScenarioKey},
+                        { "visited", e.CampaignVo.CurrentNodeVo.Value.Visited.ToString() },
+                        { "completed", e.CampaignVo.CurrentNodeVo.Value.Completed.ToString() },
+                        { "captainVictory", e.CampaignVo.CurrentNodeVo.Value.CaptainVictory.ToString() },
+                        { "scenarioName", scenario.Encounter.Name },
+                        { "scenarioDescription", scenario.Encounter.Details.Full.Description },
+                        { "proposition", scenario.Encounter.Proposition },
+                        { "choice1", scenario.Encounter.Option1.Action },
+                        { "choice2", scenario.Encounter.Option2.Action }
+                    });
+                }
+                else if (scenario.Outpost != null)
+                {
+                    Dictionary<string, string> data = new Dictionary<string, string>()
+                    {
+                        { "isBacktrack", e.IsBacktrack.ToString() },
+                        { "scenarioKey",  e.CampaignVo.CurrentNodeVo.Value.ScenarioKey},
+                        { "visited", e.CampaignVo.CurrentNodeVo.Value.Visited.ToString() },
+                        { "name", scenario.Outpost.Name },
+                        { "description", scenario.Outpost.Details.Full.Description },
+                        { "inventorySize", scenario.Outpost.Inventory.Length.ToString() }
+                    };
+
+                    for (int i = 0; i < scenario.Outpost.Inventory.Length; i++)
+                    {
+                        data.Add($"inventory{i}_type", scenario.Outpost.Inventory[i].Type.ToString());
+                        data.Add($"inventory{i}_price", scenario.Outpost.Inventory[i].PricePerUnit.ToString());
+                        data.Add($"inventory{i}_subtype", scenario.Outpost.Inventory[i].SubType.ToString());
+                    }
+                    sendEvent(EventType.ShopEntered, data);
+                }
+
+                sendEvent(EventType.NodeChange, new Dictionary<string, string>
                 {
                     { "isBacktrack", e.IsBacktrack.ToString() },
                     { "scenarioKey",  e.CampaignVo.CurrentNodeVo.Value.ScenarioKey},
                     { "visited", e.CampaignVo.CurrentNodeVo.Value.Visited.ToString() },
                     { "completed", e.CampaignVo.CurrentNodeVo.Value.Completed.ToString() },
-                    { "captainVictory", e.CampaignVo.CurrentNodeVo.Value.CaptainVictory.ToString() },
-                    { "scenarioName", scenario.Encounter.Name },
-                    { "scenarioDescription", scenario.Encounter.Details.Full.Description },
-                    { "proposition", scenario.Encounter.Proposition },
-                    { "choice1", scenario.Encounter.Option1.Action },
-                    { "choice2", scenario.Encounter.Option2.Action }
+                    { "captainVictory", e.CampaignVo.CurrentNodeVo.Value.CaptainVictory.ToString() }
                 });
-            } else if (scenario.Outpost != null)
+            } catch (Exception ex)
             {
-                Dictionary<string, string> data = new Dictionary<string, string>(){
-                    { "isBacktrack", e.IsBacktrack.ToString() },
-                    { "scenarioKey",  e.CampaignVo.CurrentNodeVo.Value.ScenarioKey},
-                    { "visited", e.CampaignVo.CurrentNodeVo.Value.Visited.ToString() },
-                    { "name", scenario.Outpost.Name },
-                    { "description", scenario.Outpost.Details.Full.Description },
-                    { "inventorySize", scenario.Outpost.Inventory.Length.ToString() }
-                };
-
-                for (int i = 0; i < scenario.Outpost.Inventory.Length; i++)
-                {
-                    data.Add($"inventory{i}_type", scenario.Outpost.Inventory[i].Type.ToString());
-                    data.Add($"inventory{i}_price", scenario.Outpost.Inventory[i].PricePerUnit.ToString());
-                    data.Add($"inventory{i}_subtype", scenario.Outpost.Inventory[i].SubType.ToString());
-                }
-                sendEvent(EventType.ShopEntered, data);
+                Log.LogError($"Error sending SectorNodeChangedEvent: {ex.Message}");
             }
-
-            sendEvent(EventType.NodeChange, new Dictionary<string, string>
-            {
-                { "isBacktrack", e.IsBacktrack.ToString() },
-                { "scenarioKey",  e.CampaignVo.CurrentNodeVo.Value.ScenarioKey},
-                { "visited", e.CampaignVo.CurrentNodeVo.Value.Visited.ToString() },
-                { "completed", e.CampaignVo.CurrentNodeVo.Value.Completed.ToString() },
-                { "captainVictory", e.CampaignVo.CurrentNodeVo.Value.CaptainVictory.ToString() }
-            });
         }
 
 
