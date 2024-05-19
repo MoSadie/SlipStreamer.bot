@@ -21,11 +21,16 @@ namespace SlipStreamer.bot
         private static ConfigEntry<string> streamerBotActionId;
         private static ConfigEntry<string> streamerBotActionName;
 
+        //private static ConfigEntry<int> eventCooldown;
+
         //private static ConfigEntry<bool> captaincyRequired;
 
         private static HttpClient httpClient = new HttpClient();
 
         internal static ManualLogSource Log;
+
+        private static Dictionary<EventType, ConfigEntry<int>> eventCooldownConfigs = new Dictionary<EventType, ConfigEntry<int>>();
+        private static Dictionary<EventType, long> lastEventTime = new Dictionary<EventType, long>();
 
         private void Awake()
         {
@@ -33,12 +38,19 @@ namespace SlipStreamer.bot
 
             streamerBotIp = Config.Bind("StreamerBot", "Ip", "127.0.0.1");
             streamerBotPort = Config.Bind("StreamerBot", "Port", 7474);
-            streamerBotActionId = Config.Bind("StreamerBot", "ActionId", "", "Action ID to execute on game events.");
-            streamerBotActionName = Config.Bind("StreamerBot", "ActionName", "", "Action name to execute on game events.");
+            streamerBotActionId = Config.Bind("StreamerBot", "ActionId", "da524811-ff47-4493-afe6-67f27eff234d", "Action ID to execute on game events.");
+            streamerBotActionName = Config.Bind("StreamerBot", "ActionName", "(Internal) Receive Event", "Action name to execute on game events.");
+
+            //eventCooldown = Config.Bind("StreamerBot", "EventCooldown", 5000, "Cooldown in ms before sending a duplicate event. (Cooldown is per event type.) Set to 0 to disable cooldown.");
+
+            foreach (EventType eventType in Enum.GetValues(typeof(EventType)))
+            {
+                eventCooldownConfigs[eventType] = Config.Bind("StreamerBot", $"EventCooldown_{eventType}", 0, $"Cooldown in ms before sending a duplicate {eventType} event. (ex. 5000 = 5 seconds) Set to 0 to disable cooldown.");
+            }
 
             //captaincyRequired = Config.Bind("Captaincy", "CaptaincyRequired", true, "Configure if you must be the captain of the ship to trigger Streamer.bot actions.");
 
-            //Harmony.CreateAndPatchAll(typeof(Plugin));
+            Harmony.CreateAndPatchAll(typeof(Plugin));
 
             // Plugin startup logic
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
@@ -51,7 +63,9 @@ namespace SlipStreamer.bot
             Svc.Get<Events>().AddListener<CampaignEndEvent>(CampaignEndEvent, 1);
             Svc.Get<Events>().AddListener<CampaignSectorChangeEvent>(CampaignSectorChangeEvent, 1);
             Svc.Get<Events>().AddListener<SectorNodeChangedEvent>(SectorNodeChangedEvent, 1);
-
+            Svc.Get<Events>().AddListener<CrewmateCreatedEvent>(CrewmateCreatedEvent, 1);
+            Svc.Get<Events>().AddListener<CrewmateRemovedEvent>(CrewmateRemovedEvent, 1);
+                      
 
             Application.quitting += ApplicationQuitting;
 
@@ -75,7 +89,10 @@ namespace SlipStreamer.bot
             RunFailed,
             RunSucceeded,
             NextSector,
-            ShopEntered
+            ShopEntered,
+            CrewmateCreated,
+            CrewmateRemoved,
+            CrewmateSwapped,
         }
 
         private bool blockEvent()
@@ -105,6 +122,18 @@ namespace SlipStreamer.bot
             //        <key value pairs from data>
             //    }
             // }
+
+            // Check if the event is on cooldown
+            if (eventCooldownConfigs[eventType].Value > 0)
+            {
+                long currentTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                if (lastEventTime.ContainsKey(eventType) && currentTime - lastEventTime[eventType] < eventCooldownConfigs[eventType].Value)
+                {
+                    Log.LogInfo($"Event {eventType} is on cooldown. Skipping.");
+                    return;
+                }
+                lastEventTime[eventType] = currentTime;
+            }
 
             try
             {
@@ -371,25 +400,89 @@ namespace SlipStreamer.bot
             }
         }
 
+        private void CrewmateCreatedEvent(CrewmateCreatedEvent e)
+        {
+            try
+            {
+                if (blockEvent())
+                    return;
+
+                string name = e.Crewmate.Client != null ? e.Crewmate.Client.Player.DisplayName : "Crew";
 
 
-        //[HarmonyPatch(typeof(SettingsButtonContainer), "ShowSettingsDialog")]
-        //[HarmonyPostfix]
-        //static void Press(PressButton __instance)
-        //{
-        //    Log.LogMessage($"Settings Menu {__instance.name} shown");
-        //    sendEvent(EventType.ChoiceMade, new Dictionary<string, string>
-        //    {
-        //        { "button", __instance.name }
-        //    });
-        //}
+                sendEvent(EventType.CrewmateCreated, new Dictionary<string, string>
+                {
+                    { "name", name },
+                    { "id", e.Crewmate.CrewmateId.ToString() },
+                    { "level", e.CrewmateVo.Progression.Level.ToString() },
+                    { "xp", e.CrewmateVo.Progression.TotalXp.ToString() },
+                    { "archetype", e.CrewmateVo.ArchetypeId },
+                    { "statHealth", e.Crewmate.Stats.MaxHealth.ToString() },
+                    { "statShields", e.Crewmate.Stats.MaxShields.ToString() }
+                    //{ "statDefense", e.Crewmate.Stats.StationShieldChargeMultiplier.ToString() },
+                    //{ "statGunnery", e.Crewmate.Stats.StationAttackMultiplier.ToString() },
+                    //{ "statCombat", e.Crewmate.Stats.MeleeDamage.ToString() },
+                    //{ "statRepairs", e.Crewmate.Stats.StationRepairMultiplier.ToString() },
+                    //{ "statSpeed", e.Crewmate.Stats.Speed.ToString() }
+                });
+            } catch (Exception ex)
+            {
+                Log.LogError($"Error sending CrewmateCreatedEvent: {ex.Message}");
+            }
+        }
 
-        //[HarmonyPatch(typeof(BaseAlertItem), "OnSendClicked")]
-        //[HarmonyPrefix]
-        //static bool OnSendClicked(ref int __result)
-        //{
-         //   sendEvent(EventType.AlertSent, null); //FIXME remove debug code
-          //  return true;
-        //}
+        private void CrewmateRemovedEvent(CrewmateRemovedEvent e)
+        {
+            try
+            {
+                if (blockEvent())
+                    return;
+
+                string name = e.Crewmate.Client != null ? e.Crewmate.Client.Player.DisplayName : "Crew";
+
+                sendEvent(EventType.CrewmateRemoved, new Dictionary<string, string>
+                {
+                    { "name", name },
+                    { "id", e.Crewmate.CrewmateId.ToString() }
+                });
+            } catch (Exception ex)
+            {
+                Log.LogError($"Error sending CrewmateRemovedEvent: {ex.Message}");
+            }
+        }
+
+
+        // One day it would be nice to have a dedicated CrewmateSwappedEvent that I can listen to.
+        // In the meantime I'll patch into the MpCrewController.OnCrewmateSwapped method to listen.
+        [HarmonyPatch(typeof(MpCrewController), "OnCrewmateSwapped")]
+        [HarmonyPostfix]
+        [HarmonyWrapSafe]
+        static void OnCrewmateSwapped(ref MpCrewController __instance, Notification<CrewmateSwapped.Payload> notif)
+        {
+            Log.LogMessage($"Crewmate Swapped Test. ID: {notif.Payload.SessionId}");
+            Crewmate crewmateById = __instance.GetCrewmateById(notif.Payload.SessionId);
+            if (crewmateById == null)
+            {
+                Log.LogError($"Crewmate not found by ID: {notif.Payload.SessionId}");
+                return;
+            }
+            string name = crewmateById.Client != null ? crewmateById.Client.Player.DisplayName : "Crew";
+            try
+            {
+                sendEvent(EventType.CrewmateSwapped, new Dictionary<string, string>
+            {
+                { "name", name },
+                { "id", crewmateById.CrewmateId.ToString() },
+                { "level", notif.Payload.NewCrewmateVo.Progression.Level.ToString() },
+                { "xp", notif.Payload.NewCrewmateVo.Progression.TotalXp.ToString() },
+                { "archetype", notif.Payload.NewCrewmateVo.ArchetypeId },
+                { "statHealth", notif.Payload.NewCrewmateVo.Stats.MaxHealth.ToString() },
+                { "statShields", notif.Payload.NewCrewmateVo.Stats.MaxShields.ToString() }
+            });
+            } catch (Exception ex)
+            {
+                Log.LogError($"Error sending CrewmateSwappedEvent: {ex.Message}");
+            }
+        }
     }
 }

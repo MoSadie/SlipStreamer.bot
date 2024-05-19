@@ -24,7 +24,7 @@ https://youtu.be/4j6o4LhsG6E
 
 1) Follow the [Streamer.bot setup instructions](https://docs.streamer.bot/get-started/installation)
 2) In the "Servers/Clients" tab, under HTTP Server check "Auto Start" and click "Start Server" (making note of the IP and port)
-3) (Optional, but helpful) Click "Import" and paste the contents of [ImportSlipStreamerBot.txt](ImportSlipStreamerBot.txt) in the "Input String" text box and click "Import" This provices a set of premade actions for you to use. There is a dedicated action for each event type, as well as a few fun premade features such as the "!ss poll" chat command to poll the chat on a choice.
+3) (Optional, but helpful) Click "Import" and paste the contents of [ImportSlipStreamerBot.txt](ImportSlipStreamerBot.txt) in the "Input String" text box and click "Import" This provices a set of premade actions for you to use. There is a dedicated action for each event type, as well as a few fun premade features such as chat polling and automatic predictions.
 
 ## Events
 
@@ -151,3 +151,43 @@ Arguments:
 - eventType: "NextSector"
 - sectorIndex: The index of the new sector.
 - sectorName: The name of the new sector.
+
+### CrewmateCreated
+
+Sent when a crewmate joins the ship. Sent even if you join a ship with existing crewmates.
+
+Arguments:
+
+- eventType: "CrewmateCreated"
+- name: The name of the crewmate. Usually their Twitch name, but they may be an Apple user.
+- id: A unique identifier for the crewmate.
+- level: Current level.
+- xp: Total XP earned, does not reset with level up.
+- archetype: The crewmate's archetype. ("cat", "hamster", "octopus", "turtle", "croc", "bear")
+- statHealth: Maximum health.
+- statShield: Maximum shield.
+
+### CrewmateRemoved
+
+Sent when a crewmate leaves the ship.
+
+Arguments:
+
+- eventType: "CrewmateRemoved"
+- name: The name of the crewmate. Usually their Twitch name, but they may be an Apple user.
+- id: A unique identifier for the crewmate.
+
+### CrewmateSwapped
+
+Sent when a crewmate uses the Transporter station to swap archetypes.
+
+Arguments:
+
+- eventType: "CrewmateSwapped"
+- name: The name of the crewmate. Usually their Twitch name, but they may be an Apple user.
+- id: A unique identifier for the crewmate.
+- level: Current level.
+- xp: Total XP earned, does not reset with level up.
+- archetype: The crewmate's archetype. ("cat", "hamster", "octopus", "turtle", "croc", "bear")
+- statHealth: Maximum health.
+- statShield: Maximum shield.
