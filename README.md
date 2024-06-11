@@ -1,30 +1,33 @@
 # SlipStreamer.bot
 
-Trigger a Streamer.bot action on in-game events!
+Trigger a Streamer.bot Action on in-game events!
 
 ## Requirements
 
 - [Slipstream: Rogue Space (on Steam)](https://playslipstream.com)
-- [BepInEx](https://docs.bepinex.dev/articles/user_guide/installation/index.html)
+- [r2modman](https://thunderstore.io/package/ebkr/r2modman/)
 - [Streamer.bot](https://streamer.bot)
 
 ## (Quick) Setup Video
 
-https://youtu.be/4j6o4LhsG6E
+(Updated video soon!)
 
 ## Game Installation
 
 1) Launch Slipstream at least once.
-2) Following the instructions [here](https://docs.bepinex.dev/articles/user_guide/installation/index.html), install BepInEx into Slipstream
-3) Download the latest release from [here](https://github.com/MoSadie/SlipStreamer.bot/releases/latest) and place it in the BepInEx/plugins folder
-4) Launch the game to generate the config file
-5) Modify the config file in BepInEx/config to match your setup. (see the config file for more details)
+2) Download and setup r2modman from [here](https://thunderstore.io/package/ebkr/r2modman/) (Click "Manual Download" and run the setup exe)
+3) Select Slipstream: Rogue Space from the list of games in r2modman and create a profile.
+4) In the "Online" tab look for SlipStreamer.bot and click it. Then click "Download"
+5) Launch Slipstream using the "Start modded" button to generate the config file.
+5) Modify the config file using the "Config editor" tab to match your setup. (see the config file for more details)
 
 ## Streamer.bot Requirements
 
 1) Follow the [Streamer.bot setup instructions](https://docs.streamer.bot/get-started/installation)
 2) In the "Servers/Clients" tab, under HTTP Server check "Auto Start" and click "Start Server" (making note of the IP and port)
 3) (Optional, but helpful) Click "Import" and paste the contents of [ImportSlipStreamerBot.txt](ImportSlipStreamerBot.txt) in the "Input String" text box and click "Import" This provices a set of premade actions for you to use. There is a dedicated action for each event type, as well as a few fun premade features such as chat polling and automatic predictions.
+
+**If you run into any issues getting this set up, please reach out! Best way is via Discord or GitHub Issues!**
 
 ## Events
 
