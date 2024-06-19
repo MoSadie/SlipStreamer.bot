@@ -3,7 +3,7 @@ schemaVersion = "0.0.1"
 
 [package]
 namespace = "MoSadie"
-name = "SlipStreamer.bot"
+name = "SlipStreamerBot"
 versionNumber = "1.1.0"
 description = "Trigger Streamer.bot Actions based on in-game events!"
 websiteUrl = "https://github.com/MoSadie/SlipStreamer.bot"
@@ -19,7 +19,7 @@ outdir = "./build"
 
 [[build.copy]]
 source = "./SlipStreamer.bot/bin/Release/netstandard2.1/com.mosadie.slipstreamerbot.dll"
-target = "BepInEx/plugins/MoSadie-SlipStreamer.bot/com.mosadie.slipstreamerbot.dll"
+target = "BepInEx/plugins/MoSadie-SlipStreamerBot/com.mosadie.slipstreamerbot.dll"
 
 [[build.copy]]
 source = "./CHANGELOG.md"
