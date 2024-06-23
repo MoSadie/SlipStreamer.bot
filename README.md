@@ -5,7 +5,7 @@ Trigger a Streamer.bot Action on in-game events!
 ## Requirements
 
 - [Slipstream: Rogue Space (on Steam)](https://playslipstream.com)
-- [r2modman](https://thunderstore.io/package/ebkr/r2modman/)
+- [r2modman](https://thunderstore.io/c/slipstream-rogue-space/p/ebkr/r2modman/)
 - [Streamer.bot](https://streamer.bot)
 
 ## (Quick) Setup Video
@@ -15,7 +15,7 @@ Trigger a Streamer.bot Action on in-game events!
 ## Game Installation
 
 1) Launch Slipstream at least once.
-2) Download and setup r2modman from [here](https://thunderstore.io/package/ebkr/r2modman/) (Click "Manual Download" and run the setup exe)
+2) Download and setup r2modman from [here](https://thunderstore.io/c/slipstream-rogue-space/p/ebkr/r2modman/) (Click "Manual Download" and run the setup exe)
 3) Select Slipstream: Rogue Space from the list of games in r2modman and create a profile.
 4) In the "Online" tab look for SlipStreamer.bot and click it. Then click "Download"
 5) Launch Slipstream using the "Start modded" button to generate the config file.
@@ -25,7 +25,7 @@ Trigger a Streamer.bot Action on in-game events!
 
 1) Follow the [Streamer.bot setup instructions](https://docs.streamer.bot/get-started/installation)
 2) In the "Servers/Clients" tab, under HTTP Server check "Auto Start" and click "Start Server" (making note of the IP and port)
-3) (Optional, but helpful) Click "Import" and paste the contents of [ImportSlipStreamerBot.txt](ImportSlipStreamerBot.txt) in the "Input String" text box and click "Import" This provices a set of premade actions for you to use. There is a dedicated action for each event type, as well as a few fun premade features such as chat polling and automatic predictions.
+3) (Optional, but recommended) Click "Import" and paste the contents of [ImportSlipStreamerBot.txt](https://raw.githubusercontent.com/MoSadie/SlipStreamer.bot/main/ImportSlipStreamerBot.txt) in the "Input String" text box and click "Import" This provices a set of premade actions for you to use. There is a dedicated action for each event type, as well as a few fun premade features such as chat polling and automatic predictions.
 
 **If you run into any issues getting this set up, please reach out! Best way is via Discord or GitHub Issues!**
 

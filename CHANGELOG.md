@@ -1,3 +1,9 @@
+## v1.2.0: Captain Config
+
+### Additions
+- Added a new configuration option to require being the Captain of the ship in order for an event to be sent to Streamer.bot. There is an option to set the default behavior and then you can also override it on a per-event basis. More details in the config file after launching once.
+    - Note this does not work with the following events: "GameLaunch", "GameExit", "JoinShip" (These will always be sent since captain data is not available when these are triggered.)
+
 ## v1.1.0: Crew Events
 
 ### Additions

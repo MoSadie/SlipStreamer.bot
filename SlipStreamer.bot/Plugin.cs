@@ -8,6 +8,7 @@ using UnityEngine;
 using Newtonsoft.Json;
 using Subpixel.Events;
 using System;
+using System.Net;
 
 namespace SlipStreamer.bot
 {
@@ -23,7 +24,7 @@ namespace SlipStreamer.bot
 
         //private static ConfigEntry<int> eventCooldown;
 
-        //private static ConfigEntry<bool> captaincyRequired;
+        private static ConfigEntry<bool> defaultCaptaincyRequired;
 
         private static HttpClient httpClient = new HttpClient();
 
@@ -31,6 +32,15 @@ namespace SlipStreamer.bot
 
         private static Dictionary<EventType, ConfigEntry<int>> eventCooldownConfigs = new Dictionary<EventType, ConfigEntry<int>>();
         private static Dictionary<EventType, long> lastEventTime = new Dictionary<EventType, long>();
+
+        enum CaptaincyRequiredConfigValue
+        {
+            Inherit,
+            Required,
+            NotRequired
+        }
+
+        private static Dictionary<EventType, ConfigEntry<CaptaincyRequiredConfigValue>> captaincyRequiredConfigs = new Dictionary<EventType, ConfigEntry<CaptaincyRequiredConfigValue>>();
 
         private void Awake()
         {
@@ -48,7 +58,15 @@ namespace SlipStreamer.bot
                 eventCooldownConfigs[eventType] = Config.Bind("StreamerBot", $"EventCooldown_{eventType}", 0, $"Cooldown in ms before sending a duplicate {eventType} event. (ex. 5000 = 5 seconds) Set to 0 to disable cooldown.");
             }
 
-            //captaincyRequired = Config.Bind("Captaincy", "CaptaincyRequired", true, "Configure if you must be the captain of the ship to trigger Streamer.bot actions.");
+            defaultCaptaincyRequired = Config.Bind("Captaincy", "DefaultIsCaptainRequired", false, "Configure if you must be the captain of the ship to trigger Streamer.bot actions. This sets the requirement for any event configured to 'inherit' the setting.");
+
+            foreach (EventType eventType in Enum.GetValues(typeof(EventType)))
+            {
+                // Skip any non-ship events since no captain is possible. (For JoinShip the captain information is not available yet)
+                if (eventType == EventType.GameLaunch || eventType == EventType.GameExit || eventType == EventType.JoinShip)
+                    continue;
+                captaincyRequiredConfigs[eventType] = Config.Bind("Captaincy", $"IsCaptainRequired_{eventType}", CaptaincyRequiredConfigValue.Inherit, $"Configure if you must be the captain of the ship to trigger Streamer.bot actions for the {eventType} event. (Inherit = use from the DefaultIsCaptainRequired setting , Required = must be captain, NotRequired = does not need to be captain)");
+            }
 
             Harmony.CreateAndPatchAll(typeof(Plugin));
 
@@ -95,18 +113,39 @@ namespace SlipStreamer.bot
             CrewmateSwapped,
         }
 
-        private bool blockEvent()
+        private static bool blockEvent(EventType eventType)
         {
-            return false;
+            Log.LogInfo($"Checking captaincy required for event {eventType} isCaptain:{getIsCaptain()}");
+            try
+            {
+                if (!captaincyRequiredConfigs.ContainsKey(eventType)) // Only if captaincy does not matter (Ex not on a ship)
+                {
+                    Log.LogDebug("Captaincy required config not found for event type. Defaulting to false.");
+                    return false;
+                }
 
-            //This doesn't work right now.
-            //try {
-            //    return captaincyRequired.Value && (CaptainManager.Main == null || !CaptainManager.Main.IsLocalPlayerCaptain);
-            //} catch (Exception e)
-            //{
-            //    Log.LogError($"Error checking captaincy: {e.Message}");
-            //    return false;
-            //}
+                if (captaincyRequiredConfigs[eventType].Value == CaptaincyRequiredConfigValue.Inherit)
+                {
+                    return defaultCaptaincyRequired.Value && !getIsCaptain();
+                }
+                else if (captaincyRequiredConfigs[eventType].Value == CaptaincyRequiredConfigValue.Required)
+                {
+                    return !getIsCaptain();
+                }
+                else if (captaincyRequiredConfigs[eventType].Value == CaptaincyRequiredConfigValue.NotRequired)
+                {
+                    return false;
+                }
+                else
+                {
+                    Log.LogError($"Unknown captaincy required config value: {captaincyRequiredConfigs[eventType].Value}");
+                    return true;
+                }
+            } catch (Exception e)
+            {
+                Log.LogError($"Error checking captaincy required for event {eventType}: {e.Message}");
+                return true;
+            }
         }
 
         private static void sendEvent(EventType eventType, Dictionary<string, string> data)
@@ -122,6 +161,13 @@ namespace SlipStreamer.bot
             //        <key value pairs from data>
             //    }
             // }
+
+            // Check if the event is blocked
+            if (blockEvent(eventType))
+            {
+                Log.LogInfo($"Event {eventType} is blocked. Skipping.");
+                return;
+            }
 
             // Check if the event is on cooldown
             if (eventCooldownConfigs[eventType].Value > 0)
@@ -162,9 +208,6 @@ namespace SlipStreamer.bot
         {
             try
             {
-                if (blockEvent())
-                    return;
-
                 sendEvent(EventType.JoinShip, []);
             }
             catch (Exception ex)
@@ -177,9 +220,7 @@ namespace SlipStreamer.bot
         {
             try
             {
-                if (blockEvent())
-                    return;
-
+                
                 switch (e.Order.Type)
                 {
                     // This event is only for reciving orders, not sending them.
@@ -230,9 +271,6 @@ namespace SlipStreamer.bot
         {
             try
             {
-                if (blockEvent())
-                    return;
-
                 if (e.Scenario == null || e.Scenario.Battle == null)
                 {
                     Log.LogError("BattleStartEvent: Scenario or Battle is null");
@@ -260,9 +298,6 @@ namespace SlipStreamer.bot
         {
             try
             {
-                if (blockEvent())
-                    return;
-
                 sendEvent(EventType.EndFight, new Dictionary<string, string>
                 {
                     { "outcome", e.Outcome.ToString() }
@@ -278,9 +313,6 @@ namespace SlipStreamer.bot
         {
             try
             {
-                if (blockEvent())
-                    return;
-
                 sendEvent(EventType.RunStarted, new Dictionary<string, string>
                 {
                     { "campaign", e.Campaign.CampaignId.ToString() },
@@ -297,9 +329,6 @@ namespace SlipStreamer.bot
         {
             try
             {
-                if (blockEvent())
-                    return;
-
                 if (e.Victory)
                 {
                     sendEvent(EventType.RunSucceeded, []);
@@ -318,9 +347,6 @@ namespace SlipStreamer.bot
         {
             try
             {
-                if (blockEvent())
-                    return;
-
                 sendEvent(EventType.NextSector, new Dictionary<string, string>
                 {
                     { "sectorIndex", e.Campaign.CurrentSectorIndex.ToString() },
@@ -336,8 +362,7 @@ namespace SlipStreamer.bot
         {
             try
             {
-                if (blockEvent())
-                    return;
+                
 
                 if (!e.CampaignVo.CurrentNodeVo.HasValue)
                     return;
@@ -404,9 +429,6 @@ namespace SlipStreamer.bot
         {
             try
             {
-                if (blockEvent())
-                    return;
-
                 string name = e.Crewmate.Client != null ? e.Crewmate.Client.Player.DisplayName : "Crew";
 
 
@@ -435,9 +457,6 @@ namespace SlipStreamer.bot
         {
             try
             {
-                if (blockEvent())
-                    return;
-
                 string name = e.Crewmate.Client != null ? e.Crewmate.Client.Player.DisplayName : "Crew";
 
                 sendEvent(EventType.CrewmateRemoved, new Dictionary<string, string>
@@ -448,6 +467,40 @@ namespace SlipStreamer.bot
             } catch (Exception ex)
             {
                 Log.LogError($"Error sending CrewmateRemovedEvent: {ex.Message}");
+            }
+        }
+
+        private static bool getIsCaptain()
+        {
+            try
+            {
+                MpSvc mpSvc = Svc.Get<MpSvc>();
+
+                if (mpSvc == null)
+                {
+                    Plugin.Log.LogError("An error occurred handling self crew. null MpSvc.");
+                    return false;
+                }
+
+
+                MpCaptainController captains = Svc.Get<MpSvc>().Captains;
+
+
+
+                if (captains == null || captains.CaptainClient == null)
+                {
+                    return false;
+                }
+                else
+                {
+                    //return self.Client.Equals(captains.CaptainClient);
+                    return captains.CaptainClient.IsLocal;
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"An error occurred while checking if the crewmate is the captain: {e.Message}");
+                return false;
             }
         }
 
