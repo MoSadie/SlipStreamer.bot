@@ -33,6 +33,8 @@ namespace SlipStreamer.bot
         private static Dictionary<EventType, ConfigEntry<int>> eventCooldownConfigs = new Dictionary<EventType, ConfigEntry<int>>();
         private static Dictionary<EventType, long> lastEventTime = new Dictionary<EventType, long>();
 
+        public static readonly string COMPATIBLE_GAME_VERSION = "4.1556"; // Grab from log file for each game update.
+
         enum CaptaincyRequiredConfigValue
         {
             Inherit,
@@ -44,50 +46,64 @@ namespace SlipStreamer.bot
 
         private void Awake()
         {
-            Plugin.Log = base.Logger;
-
-            streamerBotIp = Config.Bind("StreamerBot", "Ip", "127.0.0.1");
-            streamerBotPort = Config.Bind("StreamerBot", "Port", 7474);
-            streamerBotActionId = Config.Bind("StreamerBot", "ActionId", "da524811-ff47-4493-afe6-67f27eff234d", "Action ID to execute on game events.");
-            streamerBotActionName = Config.Bind("StreamerBot", "ActionName", "(Internal) Receive Event", "Action name to execute on game events.");
-
-            //eventCooldown = Config.Bind("StreamerBot", "EventCooldown", 5000, "Cooldown in ms before sending a duplicate event. (Cooldown is per event type.) Set to 0 to disable cooldown.");
-
-            foreach (EventType eventType in Enum.GetValues(typeof(EventType)))
+            try
             {
-                eventCooldownConfigs[eventType] = Config.Bind("StreamerBot", $"EventCooldown_{eventType}", 0, $"Cooldown in ms before sending a duplicate {eventType} event. (ex. 5000 = 5 seconds) Set to 0 to disable cooldown.");
+                Log = base.Logger;
+
+                Log.LogInfo($"Game version: {Application.version}");
+                if (Application.version != COMPATIBLE_GAME_VERSION)
+                {
+                    Log.LogError($"This version of SlipStreamer.bot is not compatible with the current game version. Please check for an updated version of the plugin.");
+                    return;
+                }
+
+                streamerBotIp = Config.Bind("StreamerBot", "Ip", "127.0.0.1");
+                streamerBotPort = Config.Bind("StreamerBot", "Port", 7474);
+                streamerBotActionId = Config.Bind("StreamerBot", "ActionId", "da524811-ff47-4493-afe6-67f27eff234d", "Action ID to execute on game events.");
+                streamerBotActionName = Config.Bind("StreamerBot", "ActionName", "(Internal) Receive Event", "Action name to execute on game events.");
+
+                //eventCooldown = Config.Bind("StreamerBot", "EventCooldown", 5000, "Cooldown in ms before sending a duplicate event. (Cooldown is per event type.) Set to 0 to disable cooldown.");
+
+                foreach (EventType eventType in Enum.GetValues(typeof(EventType)))
+                {
+                    eventCooldownConfigs[eventType] = Config.Bind("StreamerBot", $"EventCooldown_{eventType}", 0, $"Cooldown in ms before sending a duplicate {eventType} event. (ex. 5000 = 5 seconds) Set to 0 to disable cooldown.");
+                }
+
+                defaultCaptaincyRequired = Config.Bind("Captaincy", "DefaultIsCaptainRequired", false, "Configure if you must be the captain of the ship to trigger Streamer.bot actions. This sets the requirement for any event configured to 'inherit' the setting.");
+
+                foreach (EventType eventType in Enum.GetValues(typeof(EventType)))
+                {
+                    // Skip any non-ship events since no captain is possible. (For JoinShip the captain information is not available yet)
+                    if (eventType == EventType.GameLaunch || eventType == EventType.GameExit || eventType == EventType.JoinShip)
+                        continue;
+                    captaincyRequiredConfigs[eventType] = Config.Bind("Captaincy", $"IsCaptainRequired_{eventType}", CaptaincyRequiredConfigValue.Inherit, $"Configure if you must be the captain of the ship to trigger Streamer.bot actions for the {eventType} event. (Inherit = use from the DefaultIsCaptainRequired setting , Required = must be captain, NotRequired = does not need to be captain)");
+                }
+
+                Harmony.CreateAndPatchAll(typeof(Plugin));
+
+                // Plugin startup logic
+                Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+
+                Svc.Get<Events>().AddListener<ShipLoadedEvent>(ShipLoadedEvent, 1);
+                Svc.Get<Events>().AddListener<OrderGivenEvent>(OrderGivenEvent, 1);
+                Svc.Get<Events>().AddListener<BattleStartEvent>(BattleStartEvent, 1);
+                Svc.Get<Events>().AddListener<BattleEndEvent>(BattleEndEvent, 1);
+                Svc.Get<Events>().AddListener<CampaignStartEvent>(CampaignStartEvent, 1);
+                Svc.Get<Events>().AddListener<CampaignEndEvent>(CampaignEndEvent, 1);
+                Svc.Get<Events>().AddListener<CampaignSectorChangeEvent>(CampaignSectorChangeEvent, 1);
+                Svc.Get<Events>().AddListener<SectorNodeChangedEvent>(SectorNodeChangedEvent, 1);
+                Svc.Get<Events>().AddListener<CrewmateCreatedEvent>(CrewmateCreatedEvent, 1);
+                Svc.Get<Events>().AddListener<CrewmateRemovedEvent>(CrewmateRemovedEvent, 1);
+
+
+                Application.quitting += ApplicationQuitting;
+
+                sendEvent(EventType.GameLaunch, []);
             }
-
-            defaultCaptaincyRequired = Config.Bind("Captaincy", "DefaultIsCaptainRequired", false, "Configure if you must be the captain of the ship to trigger Streamer.bot actions. This sets the requirement for any event configured to 'inherit' the setting.");
-
-            foreach (EventType eventType in Enum.GetValues(typeof(EventType)))
+            catch (Exception e)
             {
-                // Skip any non-ship events since no captain is possible. (For JoinShip the captain information is not available yet)
-                if (eventType == EventType.GameLaunch || eventType == EventType.GameExit || eventType == EventType.JoinShip)
-                    continue;
-                captaincyRequiredConfigs[eventType] = Config.Bind("Captaincy", $"IsCaptainRequired_{eventType}", CaptaincyRequiredConfigValue.Inherit, $"Configure if you must be the captain of the ship to trigger Streamer.bot actions for the {eventType} event. (Inherit = use from the DefaultIsCaptainRequired setting , Required = must be captain, NotRequired = does not need to be captain)");
+                Logger.LogError($"An error occurred during plugin startup: {e.Message}");
             }
-
-            Harmony.CreateAndPatchAll(typeof(Plugin));
-
-            // Plugin startup logic
-            Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
-
-            Svc.Get<Events>().AddListener<ShipLoadedEvent>(ShipLoadedEvent, 1);
-            Svc.Get<Events>().AddListener<OrderGivenEvent>(OrderGivenEvent, 1);
-            Svc.Get<Events>().AddListener<BattleStartEvent>(BattleStartEvent, 1);
-            Svc.Get<Events>().AddListener<BattleEndEvent>(BattleEndEvent, 1);
-            Svc.Get<Events>().AddListener<CampaignStartEvent>(CampaignStartEvent, 1);
-            Svc.Get<Events>().AddListener<CampaignEndEvent>(CampaignEndEvent, 1);
-            Svc.Get<Events>().AddListener<CampaignSectorChangeEvent>(CampaignSectorChangeEvent, 1);
-            Svc.Get<Events>().AddListener<SectorNodeChangedEvent>(SectorNodeChangedEvent, 1);
-            Svc.Get<Events>().AddListener<CrewmateCreatedEvent>(CrewmateCreatedEvent, 1);
-            Svc.Get<Events>().AddListener<CrewmateRemovedEvent>(CrewmateRemovedEvent, 1);
-                      
-
-            Application.quitting += ApplicationQuitting;
-
-            sendEvent(EventType.GameLaunch, []);
 
         }
 
@@ -264,7 +280,14 @@ namespace SlipStreamer.bot
 
         private void ApplicationQuitting()
         {
-            sendEvent(EventType.GameExit, []);
+            try
+            {
+                sendEvent(EventType.GameExit, []);
+            }
+            catch (Exception ex)
+            {
+                Log.LogError($"Error sending GameExit: {ex.Message}");
+            }
         }
 
         private void BattleStartEvent(BattleStartEvent e)
@@ -364,14 +387,15 @@ namespace SlipStreamer.bot
             {
                 
 
-                if (!e.CampaignVo.CurrentNodeVo.HasValue)
+                if (e.CampaignVo == null || e.CampaignVo.CurrentNodeVo.Equals(null))
                     return;
 
-                ScenarioWrapperVo scenario = Svc.Get<ScenarioCatalog>().GetScenarioVo(e.CampaignVo.CurrentNodeVo.Value.ScenarioKey);
+                //ScenarioWrapperVo scenario = Svc.Get<ScenarioHelpers>().GetScenarioVo(e.CampaignVo.CurrentNodeVo.Value.ScenarioKey);
+                ScenarioWrapperVo scenario = e.CampaignVo.CurrentScenarioVo;
 
                 if (scenario == null)
                 {
-                    Log.LogError($"Scenario not found: {e.CampaignVo.CurrentNodeVo.Value.ScenarioKey}");
+                    Log.LogError($"Scenario not found: {e.CampaignVo.CurrentNodeVo.ScenarioKey}");
                     return;
                 }
                 else if (scenario.Encounter != null)
@@ -379,10 +403,10 @@ namespace SlipStreamer.bot
                     sendEvent(EventType.ChoiceAvailable, new Dictionary<string, string>
                     {
                         { "isBacktrack", e.IsBacktrack.ToString() },
-                        { "scenarioKey",  e.CampaignVo.CurrentNodeVo.Value.ScenarioKey},
-                        { "visited", e.CampaignVo.CurrentNodeVo.Value.Visited.ToString() },
-                        { "completed", e.CampaignVo.CurrentNodeVo.Value.Completed.ToString() },
-                        { "captainVictory", e.CampaignVo.CurrentNodeVo.Value.CaptainVictory.ToString() },
+                        { "scenarioKey",  e.CampaignVo.CurrentNodeVo.ScenarioKey},
+                        { "visited", e.CampaignVo.CurrentNodeVo.Visited.ToString() },
+                        { "completed", e.CampaignVo.CurrentNodeVo.Completed.ToString() },
+                        { "captainVictory", e.CampaignVo.CurrentNodeVo.CaptainVictory.ToString() },
                         { "scenarioName", scenario.Encounter.Name },
                         { "scenarioDescription", scenario.Encounter.Details.Full.Description },
                         { "proposition", scenario.Encounter.Proposition },
@@ -395,8 +419,8 @@ namespace SlipStreamer.bot
                     Dictionary<string, string> data = new Dictionary<string, string>()
                     {
                         { "isBacktrack", e.IsBacktrack.ToString() },
-                        { "scenarioKey",  e.CampaignVo.CurrentNodeVo.Value.ScenarioKey},
-                        { "visited", e.CampaignVo.CurrentNodeVo.Value.Visited.ToString() },
+                        { "scenarioKey",  e.CampaignVo.CurrentNodeVo.ScenarioKey},
+                        { "visited", e.CampaignVo.CurrentNodeVo.Visited.ToString() },
                         { "name", scenario.Outpost.Name },
                         { "description", scenario.Outpost.Details.Full.Description },
                         { "inventorySize", scenario.Outpost.Inventory.Length.ToString() }
@@ -414,10 +438,10 @@ namespace SlipStreamer.bot
                 sendEvent(EventType.NodeChange, new Dictionary<string, string>
                 {
                     { "isBacktrack", e.IsBacktrack.ToString() },
-                    { "scenarioKey",  e.CampaignVo.CurrentNodeVo.Value.ScenarioKey},
-                    { "visited", e.CampaignVo.CurrentNodeVo.Value.Visited.ToString() },
-                    { "completed", e.CampaignVo.CurrentNodeVo.Value.Completed.ToString() },
-                    { "captainVictory", e.CampaignVo.CurrentNodeVo.Value.CaptainVictory.ToString() }
+                    { "scenarioKey",  e.CampaignVo.CurrentNodeVo.ScenarioKey},
+                    { "visited", e.CampaignVo.CurrentNodeVo.Visited.ToString() },
+                    { "completed", e.CampaignVo.CurrentNodeVo.Completed.ToString() },
+                    { "captainVictory", e.CampaignVo.CurrentNodeVo.CaptainVictory.ToString() }
                 });
             } catch (Exception ex)
             {
@@ -478,7 +502,7 @@ namespace SlipStreamer.bot
 
                 if (mpSvc == null)
                 {
-                    Plugin.Log.LogError("An error occurred handling self crew. null MpSvc.");
+                    Log.LogError("An error occurred handling self crew. null MpSvc.");
                     return false;
                 }
 
@@ -499,7 +523,7 @@ namespace SlipStreamer.bot
             }
             catch (Exception e)
             {
-                Plugin.Log.LogError($"An error occurred while checking if the crewmate is the captain: {e.Message}");
+                Log.LogError($"An error occurred while checking if the crewmate is the captain: {e.Message}");
                 return false;
             }
         }

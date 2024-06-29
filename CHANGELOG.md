@@ -1,3 +1,7 @@
+## v1.2.1: Game Update!
+
+Updated to work with v1.70.0 of the game. Also added a game version checker that runs at launch to quietly disable ourselves if the game version changes. (Should trigger every time the game updates.)
+
 ## v1.2.0: Captain Config
 
 ### Additions
