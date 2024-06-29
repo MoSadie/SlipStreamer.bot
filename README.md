@@ -10,7 +10,7 @@ Trigger a Streamer.bot Action on in-game events!
 
 ## (Quick) Setup Video
 
-(Updated video soon!)
+https://youtu.be/AhMN6R5JOh0
 
 ## Game Installation
 
