@@ -5,7 +5,7 @@
     <AssemblyName>com.mosadie.slipstreamerbot</AssemblyName>
     <Product>SlipStreamer.bot</Product>
     <Description>Send in-game events to Streamer.bot</Description>
-    <Version>1.2.1</Version>
+    <Version>1.2.2</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>

@@ -1,3 +1,8 @@
+## v1.2.2: Custom Order event
+
+Added a new event for recieving/sending a custom order, including who sent the order.
+Verified compatible with the 1.80.0 Hotfix 1 update, released August 18th, 2024.
+
 ## v1.2.1: Game Update!
 
 Updated to work with v1.70.0 of the game. Also added a game version checker that runs at launch to quietly disable ourselves if the game version changes. (Should trigger every time the game updates.)

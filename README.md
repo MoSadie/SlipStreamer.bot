@@ -194,3 +194,14 @@ Arguments:
 - archetype: The crewmate's archetype. ("cat", "hamster", "octopus", "turtle", "croc", "bear")
 - statHealth: Maximum health.
 - statShield: Maximum shield.
+
+### CustomOrder
+
+Sent when a custom order from the helm is sent/recieved.
+
+Arguments:
+
+- message: The message sent from the helm.
+- senderDisplayName: The display name of the player who sent the message.
+- senderProfileImage: The URL for the player's profile image, or null if they do not have one.
+- senderIsCaptain: "True" if the sender is the captain, "False" otherwise.

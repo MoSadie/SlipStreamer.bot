@@ -9,6 +9,9 @@ using Newtonsoft.Json;
 using Subpixel.Events;
 using System;
 using System.Net;
+using RelayedMessages;
+using Requests.Campaigns;
+using Subpixel;
 
 namespace SlipStreamer.bot
 {
@@ -33,7 +36,7 @@ namespace SlipStreamer.bot
         private static Dictionary<EventType, ConfigEntry<int>> eventCooldownConfigs = new Dictionary<EventType, ConfigEntry<int>>();
         private static Dictionary<EventType, long> lastEventTime = new Dictionary<EventType, long>();
 
-        public static readonly string COMPATIBLE_GAME_VERSION = "4.1556"; // Grab from log file for each game update.
+        public static readonly string COMPATIBLE_GAME_VERSION = "4.1566"; // Grab from log file for each game update.
 
         enum CaptaincyRequiredConfigValue
         {
@@ -116,6 +119,7 @@ namespace SlipStreamer.bot
             EndFight,
             NodeChange,
             ChoiceAvailable,
+            CustomOrder,
             //OrderSent, // not working
             //Accolade, // not working
             KnockedOut,
@@ -248,11 +252,35 @@ namespace SlipStreamer.bot
                     //    });
                     //    break;
 
-                    case OrderType.KNOCKED_OUT:
+                    case OrderType.KnockedOut:
                         sendEvent(EventType.KnockedOut, new Dictionary<string, string>
-                    {
-                        { "message", e.Order.Message }
-                    });
+                        {
+                            { "message", e.Order.Message }
+                        });
+                        break;
+
+                    case OrderType.CustomMessage:
+                        string senderDisplayName = "Unknown";
+                        string senderProfileImage = null;
+                        bool senderIsCaptain = false;
+                        MpSvc mpSvc = Svc.Get<MpSvc>();
+                        if (mpSvc != null)
+                        {
+                            SlipClient senderClient = mpSvc.Clients.GetClientByClientId(e.Order.SenderClientId);
+                            if (senderClient != null && senderClient.Player != null)
+                            {
+                                senderDisplayName = senderClient.Player.DisplayName != null ? senderClient.Player.DisplayName : "Unknown";
+                                senderProfileImage = senderClient.Player.ProfileImage != null ? senderClient.Player.ProfileImage : null;
+                                senderIsCaptain = mpSvc.Captains.CaptainClient != null && mpSvc.Captains.CaptainClient.ClientId.Equals(senderClient.ClientId);
+                            }
+                        }
+                        sendEvent(EventType.CustomOrder, new Dictionary<string, string>
+                        {
+                            { "message", e.Order.Message },
+                            { "senderDisplayName", senderDisplayName },
+                            { "senderProfileimage",  senderProfileImage },
+                            { "senderIsCaptain", senderIsCaptain.ToString() }
+                        });
                         break;
 
                         //case OrderType.GENERAL:
@@ -345,6 +373,22 @@ namespace SlipStreamer.bot
             catch (Exception ex)
             {
                 Log.LogError($"Error sending CampaignStartEvent: {ex.Message}");
+            }
+        }
+
+        private void CampaignStartRelayed(StartCampaignRelayed e)
+        {
+            try
+            {
+                sendEvent(EventType.RunStarted, new Dictionary<string, string>
+                {
+                    { "campaign", e.Result.Campaign.CampaignId.ToString() },
+                    { "region", e.Result.Campaign.RegionVo.Metadata.Name }
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.LogError($"Error sending CampaignStartRelayed: {ex.Message}");
             }
         }
 
@@ -536,7 +580,7 @@ namespace SlipStreamer.bot
         [HarmonyWrapSafe]
         static void OnCrewmateSwapped(ref MpCrewController __instance, Notification<CrewmateSwapped.Payload> notif)
         {
-            Log.LogMessage($"Crewmate Swapped Test. ID: {notif.Payload.SessionId}");
+            //Log.LogMessage($"Crewmate Swapped Test. ID: {notif.Payload.SessionId}");
             Crewmate crewmateById = __instance.GetCrewmateById(notif.Payload.SessionId);
             if (crewmateById == null)
             {
@@ -559,6 +603,32 @@ namespace SlipStreamer.bot
             } catch (Exception ex)
             {
                 Log.LogError($"Error sending CrewmateSwappedEvent: {ex.Message}");
+            }
+        }
+
+        // This is a horrible hack to fix the edge case where the First Mate starts a run,
+        // causing the CampaignStartEvent to not be triggered. This may be an intended feature, unsure at the moment.
+        // To fix this for now, I'm patching into the SharedCaptainConsoleManager's OnCampaignStarted method to trigger my RunStarted event.
+        [HarmonyPatch(typeof(SharedCaptainConsoleManager), "OnCampaignStarted")]
+        [HarmonyPostfix]
+        [HarmonyWrapSafe]
+        static void OnRelayedCampaignStarted(ref SharedCaptainConsoleManager __instance, StartResult startResult, int clientExecutorId)
+        {
+            try
+            {
+                if (!Mainstay<CaptainReconnectManager>.Main.Equals(null) && startResult.Campaign != null && __instance.CaptainConsoleUI != null) // This is all of the if statements that are in the original method. Silently fail if any of these are false.
+                {
+                    Log.LogInfo("Relayed Campaign Started. Sending RunStarted event.");
+                    sendEvent(EventType.RunStarted, new Dictionary<string, string>
+                    {
+                        { "campaign", startResult.Campaign.CampaignId.ToString() },
+                        { "region", startResult.Campaign.RegionVo.Metadata.Name }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.LogError($"Error sending relayed RunStarted: {ex.Message}");
             }
         }
     }
