@@ -25,6 +25,10 @@ target = "BepInEx/plugins/MoSadie-SlipStreamerBot/com.mosadie.slipstreamerbot.dl
 source = "./CHANGELOG.md"
 target = "./CHANGELOG.md"
 
+[[build.copy]]
+source = "./ImportSlipStreamerBot.txt"
+target = "./ImportSlipStreamerBot.txt"
+
 [publish]
 repository = "https://thunderstore.io"
 communities = [ "slipstream-rogue-space", ]
