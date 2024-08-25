@@ -1,6 +1,6 @@
 ## v1.2.2: Custom Order event
 
-Added a new event for recieving/sending a custom order, including who sent the order.
+Added a new event for receiving/sending a custom order, including who sent the order.
 Verified compatible with the 1.80.0 Hotfix 1 update, released August 18th, 2024.
 
 ## v1.2.1: Game Update!
