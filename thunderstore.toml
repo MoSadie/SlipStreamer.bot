@@ -4,7 +4,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "MoSadie"
 name = "SlipStreamerBot"
-versionNumber = "1.2.2"
+versionNumber = "1.2.3"
 description = "Trigger Streamer.bot Actions based on in-game events!"
 websiteUrl = "https://github.com/MoSadie/SlipStreamer.bot"
 containsNsfwContent = false

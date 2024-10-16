@@ -1,3 +1,7 @@
+## v1.2.3: Game Update
+
+Updated to support current game version of v1.90.0.
+
 ## v1.2.2: Custom Order event
 
 Added a new event for receiving/sending a custom order, including who sent the order.

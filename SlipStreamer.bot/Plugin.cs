@@ -36,7 +36,7 @@ namespace SlipStreamer.bot
         private static Dictionary<EventType, ConfigEntry<int>> eventCooldownConfigs = new Dictionary<EventType, ConfigEntry<int>>();
         private static Dictionary<EventType, long> lastEventTime = new Dictionary<EventType, long>();
 
-        public static readonly string COMPATIBLE_GAME_VERSION = "4.1566"; // Grab from log file for each game update.
+        public static readonly string COMPATIBLE_GAME_VERSION = "4.1579"; // Grab from log file for each game update.
 
         enum CaptaincyRequiredConfigValue
         {
