@@ -39,7 +39,7 @@ namespace SlipStreamer.bot
         private static Dictionary<EventType, long> lastEventTime = new Dictionary<EventType, long>();
 
         public static readonly string COMPATIBLE_GAME_VERSION = "4.1579"; // Grab from log file for each game update.
-        public static readonly string GAME_VERSION_URL = "https://raw.githubusercontent.com/MoSadie/SlipStreamer.bot/refs/heads/MoCore/versions.json";
+        public static readonly string GAME_VERSION_URL = "https://raw.githubusercontent.com/MoSadie/SlipStreamer.bot/refs/heads/main/versions.json";
 
         enum CaptaincyRequiredConfigValue
         {
