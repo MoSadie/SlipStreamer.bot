@@ -1,6 +1,6 @@
 ## v1.2.3: Game Update
 
-Updated to support current game version of v1.90.0.
+Updated to support current game version of v1.90.0. And some internal changes to enable the ability to manage the compatible game versions without having to make a new release.
 
 ## v1.2.2: Custom Order event
 
