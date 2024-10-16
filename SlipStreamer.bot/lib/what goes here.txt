@@ -1,3 +1,5 @@
 Grab the Assembly-CSharp.dll from the game files.
 Not distributing it since it's from the game files.
 THE GAME IS FREE ON STEAM.
+
+Also grab the latest MoCore dll from https://github.com/mosadiem/MoCore/releases/latest
