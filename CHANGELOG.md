@@ -1,3 +1,9 @@
+## v2.0.0: Rebrand!
+
+Added the ability to do multiple outputs on an event, now can send to a http webserver as well as Streamer.bot.
+
+Renamed project to SlipEvent to better reflect the purpose of the mod.
+
 ## v1.2.3: Game Update
 
 Updated to support current game version of v1.90.0. And some internal changes to enable the ability to manage the compatible game versions without having to make a new release.

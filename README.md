@@ -1,11 +1,18 @@
-# SlipStreamer.bot
+# SlipEvent
 
-Trigger a Streamer.bot Action on in-game events!
+Trigger external software from in-game events!
+
+You can enable events being sent to any/all of the following:
+- Streamer.bot
+- HTTP Server (via POST request)
 
 ## Requirements
 
 - [Slipstream: Rogue Space (on Steam)](https://playslipstream.com)
 - [r2modman](https://thunderstore.io/c/slipstream-rogue-space/p/ebkr/r2modman/)
+
+### Optional
+
 - [Streamer.bot](https://streamer.bot)
 
 ## (Quick) Setup Video
@@ -21,11 +28,17 @@ https://youtu.be/AhMN6R5JOh0
 5) Launch Slipstream using the "Start modded" button to generate the config file.
 5) Modify the config file using the "Config editor" tab to match your setup. (see the config file for more details)
 
+## HTTP Post Request Requirements
+
+1) Set the URL in the config file to the server you want to send the requests to.
+2) Make sure the HTTP request integration is enabled in the config file.
+
 ## Streamer.bot Requirements
 
 1) Follow the [Streamer.bot setup instructions](https://docs.streamer.bot/get-started/installation)
 2) In the "Servers/Clients" tab, under HTTP Server check "Auto Start" and click "Start Server" (making note of the IP and port)
 3) (Optional, but recommended) Click "Import" and paste the contents of [ImportSlipStreamerBot.txt](https://raw.githubusercontent.com/MoSadie/SlipStreamer.bot/main/ImportSlipStreamerBot.txt) in the "Input String" text box and click "Import" This provices a set of premade actions for you to use. There is a dedicated action for each event type, as well as a few fun premade features such as chat polling and automatic predictions.
+4) Make sure in the SlipEvent config file that Streamer.bot integration is enabled.
 
 **If you run into any issues getting this set up, please reach out! Best way is via Discord or GitHub Issues!**
 
