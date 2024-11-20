@@ -14,13 +14,17 @@ using Requests.Campaigns;
 using Subpixel;
 using MoCore;
 
-namespace SlipStreamer.bot
+namespace SlipEvent
 {
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     [BepInDependency("com.mosadie.mocore", BepInDependency.DependencyFlags.HardDependency)]
     [BepInProcess("Slipstream_Win.exe")]
     public class Plugin : BaseUnityPlugin, MoPlugin
     {
+        private static ConfigEntry<bool> httpRequestEnabled;
+        private static ConfigEntry<string> httpRequestUrl;
+
+        private static ConfigEntry<bool> streamerBotEnabled;
         private static ConfigEntry<string> streamerBotIp;
         private static ConfigEntry<int> streamerBotPort;
 
@@ -38,8 +42,8 @@ namespace SlipStreamer.bot
         private static Dictionary<EventType, ConfigEntry<int>> eventCooldownConfigs = new Dictionary<EventType, ConfigEntry<int>>();
         private static Dictionary<EventType, long> lastEventTime = new Dictionary<EventType, long>();
 
-        public static readonly string COMPATIBLE_GAME_VERSION = "4.1579"; // Grab from log file for each game update.
-        public static readonly string GAME_VERSION_URL = "https://raw.githubusercontent.com/MoSadie/SlipStreamer.bot/refs/heads/main/versions.json";
+        public static readonly string COMPATIBLE_GAME_VERSION = "4.1595"; // Grab from log file for each game update.
+        public static readonly string GAME_VERSION_URL = "https://raw.githubusercontent.com/MoSadie/SlipEvent/refs/heads/main/versions.json";
 
         enum CaptaincyRequiredConfigValue
         {
@@ -62,6 +66,10 @@ namespace SlipStreamer.bot
                     return;
                 }
 
+                httpRequestEnabled = Config.Bind("HTTP", "Enabled", false, "Enable HTTP requests to a custom URL.");
+                httpRequestUrl = Config.Bind("HTTP", "Url", "http://localhost:8080", "URL to send HTTP requests to.");
+
+                streamerBotEnabled = Config.Bind("StreamerBot", "Enabled", true, "Enable StreamerBot integration.");
                 streamerBotIp = Config.Bind("StreamerBot", "Ip", "127.0.0.1");
                 streamerBotPort = Config.Bind("StreamerBot", "Port", 7474);
                 streamerBotActionId = Config.Bind("StreamerBot", "ActionId", "da524811-ff47-4493-afe6-67f27eff234d", "Action ID to execute on game events.");
@@ -71,7 +79,7 @@ namespace SlipStreamer.bot
 
                 foreach (EventType eventType in Enum.GetValues(typeof(EventType)))
                 {
-                    eventCooldownConfigs[eventType] = Config.Bind("StreamerBot", $"EventCooldown_{eventType}", 0, $"Cooldown in ms before sending a duplicate {eventType} event. (ex. 5000 = 5 seconds) Set to 0 to disable cooldown.");
+                    eventCooldownConfigs[eventType] = Config.Bind("Cooldown", $"EventCooldown_{eventType}", 0, $"Cooldown in ms before sending a duplicate {eventType} event. (ex. 5000 = 5 seconds) Set to 0 to disable cooldown.");
                 }
 
                 defaultCaptaincyRequired = Config.Bind("Captaincy", "DefaultIsCaptainRequired", false, "Configure if you must be the captain of the ship to trigger Streamer.bot actions. This sets the requirement for any event configured to 'inherit' the setting.");
@@ -203,9 +211,24 @@ namespace SlipStreamer.bot
                 lastEventTime[eventType] = currentTime;
             }
 
+            data.Add("eventType", eventType.ToString());
+
+            if (streamerBotEnabled.Value)
+            {
+                sendEventToStreamerBot(eventType.ToString(), data);
+            }
+
+            if (httpRequestEnabled.Value)
+            {
+                sendEventToHttp(eventType.ToString(), data);
+            }
+        }
+
+        private static void sendEventToStreamerBot(String eventType, Dictionary<string, string> data)
+        {
             try
             {
-                data.Add("eventType", eventType.ToString());
+
 
                 var dataJSON = JsonConvert.SerializeObject(new
                 {
@@ -223,6 +246,23 @@ namespace SlipStreamer.bot
             catch (HttpRequestException e)
             {
                 Log.LogError($"Error sending event to StreamerBot: {e.Message}");
+            }
+        }
+
+        private static void sendEventToHttp(String eventType, Dictionary<string, string> data)
+        {
+            try
+            {
+
+
+                var dataJSON = JsonConvert.SerializeObject(data);
+
+                Log.LogInfo($"Sending event {eventType} to Http: {httpRequestUrl.Value} with data: {dataJSON}");
+                httpClient.PostAsync(httpRequestUrl.Value, new StringContent(dataJSON));
+            }
+            catch (HttpRequestException e)
+            {
+                Log.LogError($"Error sending event to Http: {e.Message}");
             }
         }
 
@@ -618,7 +658,7 @@ namespace SlipStreamer.bot
         {
             try
             {
-                if (!Mainstay<CaptainReconnectManager>.Main.Equals(null) && startResult.Campaign != null && __instance.CaptainConsoleUI != null) // This is all of the if statements that are in the original method. Silently fail if any of these are false.
+                if (!Mainstay<CaptainReconnectManager>.Main.Equals(null) && startResult.Campaign != null && __instance.CaptainConsoleUI != null) // These are all of the if statements that are in the original method. Silently fail if any of these are false.
                 {
                     Log.LogInfo("Relayed Campaign Started. Sending RunStarted event.");
                     sendEvent(EventType.RunStarted, new Dictionary<string, string>
